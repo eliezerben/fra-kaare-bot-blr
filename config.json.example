@@ -1,0 +1,10 @@
+{
+    "bmm": {
+        "username": "my-bmm-username",
+        "password": "my-bmm-password"
+    },
+    "telegram": {
+        "bot_token": "my-telegram-bot-token",
+        "chat_id": "telegram-chat-id"
+    }
+}
