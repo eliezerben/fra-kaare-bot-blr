@@ -81,6 +81,14 @@ class MinimalBmmApi:
         return self._get_response('POST', path, True, **kwargs)
 
     def download(self, url, path, use_auth=True):
+        response = self.get_response_object(url, use_auth)
+        path = path.translate(str.maketrans({"?": r"q"}))
+        with open(path, 'wb') as fout:
+            fobj = response.raw
+            fobj.decode_content = True
+            shutil.copyfileobj(fobj, fout)
+
+    def get_response_object(self, url, use_auth=True):
         headers = {
             'Accept-Encoding': 'gzip, deflate, sdch, br',
         }
@@ -88,13 +96,9 @@ class MinimalBmmApi:
         if use_auth:
             auth = HTTPBasicAuth(self.username, self.token)
 
-        response = requests.get(url, headers=headers, auth=auth, stream=True)
+        response = requests.get(url, headers=headers, auth=auth, stream=True, timeout=15)
         assert_ok(response)
-        path = path.translate(str.maketrans({"?": r"q"}))
-        with open(path, 'wb') as fout:
-            fobj = response.raw
-            fobj.decode_content = True
-            shutil.copyfileobj(fobj, fout)
+        return response
 
     def authenticate(self, username, password):
         response = self._get_response(
@@ -106,15 +110,15 @@ class MinimalBmmApi:
 
         data = response.json()
         resp_username = data.get('username')
-        if resp_username != username:
-            raise ValueError('Login returned different'
-                             ' username than used for login!')
+        # if resp_username != username:
+        #     raise ValueError('Login returned different'
+        #                      ' username than used for login!')
 
         token = data.get('token')
         if not token:
             raise ValueError('Login did not return valid token!')
 
-        self.username = username
+        self.username = resp_username
         # self.first_name = data.get('first_name')
         # self.last_name = data.get('last_name')
         self.token = token
