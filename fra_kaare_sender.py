@@ -82,14 +82,13 @@ class FraKaareSender:
 
     def _get_song_info(self, track):
         """Get information of song played in the track to be sent as caption"""
-        caption = None
+        title = track['_meta'].get('title')
+        caption = f'<b>Title:</b> {title}'
 
         long_to_short = {
             'herrens_veier': 'HV',
             'mandelblomsten': 'MB',
         }
-
-        title = track['_meta'].get('title')
 
         rel = None
         if track['rel']:
@@ -106,7 +105,7 @@ class FraKaareSender:
             rel_name = long_to_short[rel_name]
         else:
             rel_name = rel_name.replace('_', ' ').title()
-        caption = f'<b>Title:</b> {title}\n<b>Song:</b> {rel_name} {rel_id}'
+        caption = f'{caption}\n<b>Song:</b> {rel_name} {rel_id}'
 
         return caption
 
