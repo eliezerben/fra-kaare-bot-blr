@@ -79,22 +79,19 @@ async def get_images(book_type, songnumber_file_pairs, output_dir):
 
     songs_count = len(songnumber_file_pairs)
     print(f'Saving images to: {output_dir}')
-    for index, pair in enumerate(songnumber_file_pairs):
+    for index, pair in enumerate(songnumber_file_pairs, start=1):
         (songnumber, file_path) = pair
-        print(f'    Saving Song: {index+1}/{songs_count}')
+        print(f'    Saving Song: {index}/{songs_count}')
         await page.goto(file_path)
         if book_type == 'hv':
+            # Hide the [Index] link in HV
             await page.evaluate('''
-                /* Add some space around so that the text dont stick to the outline */
-                document.body.style.padding = '5px';
-
-                /* Remove the [Index] link in HV */
                 indexLink = document.querySelector('.indexlink')
                 if (indexLink) {
                     indexLink.style.display = 'none';
                 }
             ''')
-        body = await page.querySelector('body')
+        body = await page.querySelector('html')
         await body.screenshot(path=os.path.join(output_dir, f'{songnumber}.png'))
     await browser.close()
 
