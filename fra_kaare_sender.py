@@ -3,6 +3,7 @@ import json
 import traceback
 
 from requests.exceptions import RequestException
+from requests.packages.urllib3.exceptions import ReadTimeoutError
 
 from bmmapi import MinimalBmmApi, BmmApiError
 from db_manager import DatabaseManager
@@ -47,7 +48,6 @@ class FraKaareSender:
         print(f'Last sent track id: {last_sent_track_id}')
         tracks_published_order = self._get_new_tracks()
         tracks_sending_order = tracks_published_order[::-1]
-        new_last_sent_track_id = None
         if tracks_sending_order:
             track_ids_to_send = [str(tr['id']) for tr in tracks_sending_order]
             print(f"Tracks to send: {', '.join(track_ids_to_send)}")
@@ -56,12 +56,10 @@ class FraKaareSender:
                 send_success = self._send_track(track)
                 if send_success:
                     print(' - Success')
-                    new_last_sent_track_id = track['id']
+                    self.db_man.set_last_sent_track_id(track['id'])
                 else:
                     print(' - Fail')
                     break
-            if new_last_sent_track_id is not None:
-                self.db_man.set_last_sent_track_id(new_last_sent_track_id)
         else:
             print("No tracks to send")
 
@@ -129,7 +127,7 @@ class FraKaareSender:
                 title=track_title,
                 parse_mode='HTML'
             )
-        except (BmmApiError, RequestException):
+        except (BmmApiError, RequestException, ReadTimeoutError):
             traceback.print_exc()
             return False
         return True
