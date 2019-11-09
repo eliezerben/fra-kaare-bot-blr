@@ -1,0 +1,3 @@
+wheel
+pyppeteer==0.0.25
+beautifulsoup4==4.8.1
