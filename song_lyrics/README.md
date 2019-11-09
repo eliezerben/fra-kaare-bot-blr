@@ -1,7 +1,6 @@
 # epub_to_images
-epub_to_images.py is used to convert epub of hv/mb to images.\
-It works by first extracting epub(which is a collection of html files).\
-Then [`pyppeteer`](https://pypi.org/project/pyppeteer) is used to open the html in chromium and take screenshot.
+epub_to_images.py is can convert epub of hv/mb to images.\
+It works by first extracting the epub(which is just a collection of html files) after which [`pyppeteer`](https://pypi.org/project/pyppeteer) is used to atutomate the process of opening the html files in chromium and taking screenshot.
 
 ## Requirements
 1. Install requirements \
