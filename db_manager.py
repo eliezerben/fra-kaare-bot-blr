@@ -11,11 +11,11 @@ class DatabaseManager():
     }
     """
 
-    def __init__(self):
+    def __init__(self, db_file):
         """Open db file if exists.
         Else, initialize db
         """
-        self.db_filename = 'database.json'
+        self.db_filename = db_file
         self.db_data = None
 
         if os.path.isfile(self.db_filename):

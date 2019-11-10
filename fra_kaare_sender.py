@@ -10,6 +10,9 @@ from db_manager import DatabaseManager
 from telegram_bot import TelegramBot
 
 
+SCRIPT_DIR = os.path.dirname(os.path.realpath(__file__))
+
+
 class ConfigFileException(Exception):
     pass
 
@@ -26,7 +29,7 @@ class FraKaareSender:
     TelegramBot uploads the audio to the channel.
     """
 
-    def __init__(self, config='./config.json'):
+    def __init__(self, config):
         self.fra_kaare_podcast_id = 1
 
         if not os.path.isfile(config):
@@ -41,7 +44,7 @@ class FraKaareSender:
         self.bmm_api.setLanguage('en')
         self.bot = TelegramBot(self.telegram_config['bot_token'])
 
-        self.db_man = DatabaseManager()
+        self.db_man = DatabaseManager(os.path.join(SCRIPT_DIR, 'database.json'))
 
     def send_new_tracks(self):
         last_sent_track_id = self.db_man.get_last_sent_track_id()
@@ -166,17 +169,33 @@ class FraKaareSender:
         if not track_url:
             return True
 
-        caption = self.get_track_caption(track_info)
+        audio_caption = self.get_track_caption(track_info)
 
         try:
+            # Send audio file
             response = self.bmm_api.get_response_object(track_url)
             raw_response_stream = response.raw
             self.bot.send_audio(
                 raw_response_stream,
                 chat_id=self.telegram_config['chat_id'],
-                caption=caption,
+                caption=audio_caption,
                 title=track_title,
                 parse_mode='HTML'
+            )
+
+            # Send song lyric image file
+            song_book = track_info['song_book']  
+            song_number = track_info['song_number']
+            # If there is no song information for track, return
+            if not song_book:
+                return True
+            song_lyric_file_path = os.path.join(SCRIPT_DIR, 'song_lyrics', song_book, f'{song_number}.png')
+            # If lyric file is not found for song, return
+            if not os.path.isfile(song_lyric_file_path):
+                return True
+            self.bot.send_photo(
+                open(song_lyric_file_path, 'rb'),
+                chat_id=self.telegram_config['chat_id']
             )
         except (BmmApiError, RequestException, ReadTimeoutError):
             traceback.print_exc()
