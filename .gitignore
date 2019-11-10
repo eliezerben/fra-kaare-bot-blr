@@ -141,4 +141,10 @@ pip-selfcheck.json
 
 tmp/
 database.json
+
+# Contains sensitive information
 config.json
+
+# Output of epub_to_images.py
+song_lyrics/hv
+song_lyrics/mb
