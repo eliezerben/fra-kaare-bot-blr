@@ -146,5 +146,5 @@ database.json
 config.json
 
 # Output of epub_to_images.py
-song_lyrics/hv
-song_lyrics/mb
+song_lyrics/HV
+song_lyrics/MB
