@@ -70,7 +70,7 @@ async def get_images(book_type, songnumber_file_pairs, output_dir):
 
     browser = await pyppeteer.launch()
     page = await browser.newPage()
-    viewport_width = 490
+    viewport_width = 411
     await page.setViewport({
         'width': viewport_width,
         'height': page.viewport['height'],
