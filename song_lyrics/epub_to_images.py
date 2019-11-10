@@ -35,12 +35,12 @@ def get_args():
     )
     arg_parser.add_argument(
         '-o', '--output_dir',
-        help="path to output directory where images should be stored. Default output dir is './hv' or '.mb' based on --book argument"
+        help="path to output directory where images should be stored. Default output dir is './HV' or './MB' based on --book argument"
     )
 
     args = arg_parser.parse_args()
     if not args.output_dir:
-        args.output_dir = os.path.join(SCRIPT_DIR, args.book)
+        args.output_dir = os.path.join(SCRIPT_DIR, args.book.upper())
 
     return args
 
