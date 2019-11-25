@@ -164,6 +164,7 @@ class FraKaareSender:
         track_info = self.get_track_info(track)
         track_url = track_info['url']
         track_title = track_info['title']
+        track_title_no_space = track_title.replace(' ', '_')  # Remove space as telegram adds random thumbnails and album arts otherwise
 
         # There is no url. Silently skip sending this track.
         if not track_url:
@@ -179,7 +180,7 @@ class FraKaareSender:
                 raw_response_stream,
                 chat_id=self.telegram_config['chat_id'],
                 caption=audio_caption,
-                title=track_title,
+                title=track_title_no_space,
                 parse_mode='HTML'
             )
 
