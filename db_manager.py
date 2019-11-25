@@ -7,7 +7,7 @@ class DatabaseManager():
 
     DB fromat:
     {
-        "last_track_id": 101502
+        "last_sent_day": "2019-11-25"
     }
     """
 
@@ -24,12 +24,12 @@ class DatabaseManager():
         else:
             self.db_data = {}
 
-    def get_last_sent_track_id(self):
-        """Return 'last_track_id'"""
-        return self.db_data.get('last_track_id')
+    def get_last_sent_day(self):
+        """Return 'last_sent_day'"""
+        return self.db_data.get('last_sent_day')
 
-    def set_last_sent_track_id(self, track_id):
-        """Set 'last_track_id' and write immediately"""
-        self.db_data['last_track_id'] = track_id
+    def set_last_sent_day(self, track_pub_day):
+        """Set 'last_sent_day' and write immediately"""
+        self.db_data['last_sent_day'] = track_pub_day
         with open(self.db_filename, 'w') as db_file:
             json.dump(self.db_data, db_file, indent=4)

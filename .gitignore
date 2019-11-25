@@ -143,8 +143,11 @@ tmp/
 database.json
 
 # Contains sensitive information
-config.json
+settings.py
 
 # Output of epub_to_images.py
-song_lyrics/HV
-song_lyrics/MB
+song_lyrics/HV-*
+song_lyrics/MB-*
+
+# Test file
+test.py
