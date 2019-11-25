@@ -45,6 +45,9 @@ def assert_ok(response):
 
 
 class MinimalBmmApi:
+
+    lang_list = ['de', 'en', 'es', 'fi', 'fr', 'hu', 'it', 'nb', 'nl', 'pl', 'pt', 'ro', 'ru', 'sl', 'ta', 'tr']
+
     def __init__(self, base_url):
         self.authenticated = False
         self.token = None
@@ -125,7 +128,7 @@ class MinimalBmmApi:
         self.authenticated = True
 
     def setLanguage(self, lang):
-        if lang not in ['de', 'en', 'nb']:
+        if lang not in self.lang_list:
             raise ValueError("Not supported language: " + lang)
         self.lang = lang
 
