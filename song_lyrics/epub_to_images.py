@@ -4,6 +4,7 @@ import tempfile
 import shutil
 import os
 import asyncio
+import math
 
 from bs4 import BeautifulSoup
 import pyppeteer
@@ -71,6 +72,7 @@ async def get_images(book_type, songnumber_file_pairs, output_dir):
     browser = await pyppeteer.launch()
     page = await browser.newPage()
     viewport_width = 411
+    viewport_height = math.ceil((viewport_width / 9) * 16)  # 16:9 ratio
     await page.setViewport({
         'width': viewport_width,
         'height': page.viewport['height'],
@@ -91,6 +93,10 @@ async def get_images(book_type, songnumber_file_pairs, output_dir):
                     indexLink.style.display = 'none';
                 }
             ''')
+        await page.evaluate(f'''
+            html = document.querySelector('html');
+            html.style.minHeight = '{viewport_height}px';
+        ''')
         body = await page.querySelector('html')
         await body.screenshot(path=os.path.join(output_dir, f'{songnumber}.png'))
     await browser.close()
