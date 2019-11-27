@@ -76,7 +76,7 @@ async def get_images(book_type, songnumber_file_pairs, output_dir):
     await page.setViewport({
         'width': viewport_width,
         'height': page.viewport['height'],
-        'deviceScaleFactor': 2  # Scale page 2x
+        'deviceScaleFactor': 4  # Scale page 4x
     })
 
     songs_count = len(songnumber_file_pairs)
@@ -98,7 +98,10 @@ async def get_images(book_type, songnumber_file_pairs, output_dir):
             html.style.minHeight = '{viewport_height}px';
         ''')
         body = await page.querySelector('html')
-        await body.screenshot(path=os.path.join(output_dir, f'{songnumber}.png'))
+        await body.screenshot(
+            path=os.path.join(output_dir, f'{songnumber}.png'),
+            type='png'
+        )
     await browser.close()
 
 
