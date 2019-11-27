@@ -5,16 +5,10 @@ import traceback
 from requests.exceptions import RequestException
 from requests.packages.urllib3.exceptions import ReadTimeoutError
 
+import settings
 from bmmapi import MinimalBmmApi, BmmApiError
 from db_manager import DatabaseManager
 from telegram_bot import TelegramBot
-
-
-SCRIPT_DIR = os.path.dirname(os.path.realpath(__file__))
-
-
-class ConfigFileException(Exception):
-    pass
 
 
 class FraKaareSender:
@@ -29,37 +23,28 @@ class FraKaareSender:
     TelegramBot uploads the audio to the channel.
     """
 
-    def __init__(self, config):
+    def __init__(self):
         self.fra_kaare_podcast_id = 1
 
-        if not os.path.isfile(config):
-            raise ConfigFileException(f"Config file '{config}' could not be found.")
-
-        config_data = json.load(open(config))
-        self.bmm_config = config_data['bmm']
-        self.telegram_config = config_data['telegram']
-
         self.bmm_api = MinimalBmmApi('https://bmm-api.brunstad.org')
-        self.bmm_api.authenticate(self.bmm_config['username'], self.bmm_config['password'])
-        self.bmm_api.setLanguage('en')
-        self.bot = TelegramBot(self.telegram_config['bot_token'])
+        self.bmm_api.authenticate(settings.BMM_USERNAME, settings.BMM_PASSWORD)
+        self.bot = TelegramBot(settings.TELEGRAM_BOT_TOKEN)
 
-        self.db_man = DatabaseManager(os.path.join(SCRIPT_DIR, 'database.json'))
+        self.db_man = DatabaseManager(os.path.join(settings.SCRIPT_DIR, 'database.json'))
 
     def send_new_tracks(self):
-        last_sent_track_id = self.db_man.get_last_sent_track_id()
-        print(f'Last sent track id: {last_sent_track_id}')
-        tracks_published_order = self.get_new_tracks()
-        tracks_sending_order = tracks_published_order[::-1]
-        if tracks_sending_order:
-            track_ids_to_send = [str(tr['id']) for tr in tracks_sending_order]
-            print(f"Tracks to send: {', '.join(track_ids_to_send)}")
-            for track in tracks_sending_order:
-                print(f"Sending track: {track['id']}", end='', flush=True)
-                send_success = self.send_track(track)
+        last_sent_day = self.db_man.get_last_sent_day()
+        print(f'Last sent day: {last_sent_day}')
+        new_tracks = self.get_new_tracks()
+        if new_tracks:
+            days_to_send = sorted(new_tracks.keys())
+            print(f"Days to send: {', '.join(days_to_send)}")
+            for day in days_to_send:
+                print(f"Sending track of: {day}", end='', flush=True)
+                send_success = self.send_tracks(new_tracks[day])
                 if send_success:
                     print(' - Success')
-                    self.db_man.set_last_sent_track_id(track['id'])
+                    self.db_man.set_last_sent_day(day)
                 else:
                     print(' - Fail')
                     break
@@ -67,19 +52,41 @@ class FraKaareSender:
             print("No tracks to send")
 
     def get_new_tracks(self):
-        """Return new tracks which have been published after the last track was sent"""
-        new_tracks = []
-        fra_kaare_tracks = self.bmm_api.podcastTracks(self.fra_kaare_podcast_id)
-        last_sent_track_id = self.db_man.get_last_sent_track_id()
+        """Return new tracks which have not yet been sent.
+        [
+            '2019-25-11': {
+                'en': track,
+                'nb': track
+            },
+            ...
+        ]
+        """
+        new_tracks = {}
+        for lang in settings.LANG:
+            new_tracks_lang = []
+            self.bmm_api.setLanguage(lang)
+            fra_kaare_tracks = self.bmm_api.podcastTracks(self.fra_kaare_podcast_id)
+            last_sent_day = self.db_man.get_last_sent_day()
 
-        if not last_sent_track_id:
-            new_tracks.append(fra_kaare_tracks[0])
-        else:
-            for index, track in enumerate(fra_kaare_tracks):
-                if track['id'] == last_sent_track_id:
-                    break
-            new_tracks.extend(fra_kaare_tracks[:index])
+            if not last_sent_day:
+                new_tracks_lang.append(fra_kaare_tracks[0])
+            else:
+                for index, track in enumerate(fra_kaare_tracks):
+                    if track['published_at'].startswith(last_sent_day):
+                        break
+                new_tracks_lang.extend(fra_kaare_tracks[:index])
+
+            for track in new_tracks_lang:
+                track_day = self.get_day_from_ts(track['published_at'])
+                if track_day not in new_tracks:
+                    new_tracks[track_day] = {}
+                new_tracks[track_day][lang] = track
+
         return new_tracks
+
+    def get_day_from_ts(self, timestamp):
+        """ 2019-01-01T04:00:51+01:00 -> 2019-01-01 """
+        return timestamp[:10]
 
     def get_track_info(self, track):
         """Get basic information about the track
@@ -136,7 +143,7 @@ class FraKaareSender:
 
         return song_info
 
-    def get_track_caption(self, track_info):
+    def get_track_caption(self, track_info, add_song_info=True):
         """Get caption for the track
         Return:
             "<b>Title:</b> Track title here
@@ -150,55 +157,81 @@ class FraKaareSender:
 
         song_book = track_info['song_book']
         song_number = track_info['song_number']
-        if song_book:
+        if add_song_info and song_book:
             caption_lines.append(f'<b>Song:</b> {song_book} {song_number}')
 
         return '\n'.join(caption_lines)
 
-    def send_track(self, track):
-        """Download and send track to telegram channel.
+    def send_tracks(self, tracks):
+        """Download and send Fra Kåre tracks of a specific day to telegram channel.
         Return:
             False on error
             True otherwise
         """
-        track_info = self.get_track_info(track)
-        track_url = track_info['url']
-        track_title = track_info['title']
-        track_title_no_space = track_title.replace(' ', '_')  # Remove space as telegram adds random thumbnails and album arts otherwise
+        song_book = None
+        song_number = None
+        song_lyrics_files = []
+        for lang in settings.LANG:
+            self.bmm_api.setLanguage(lang)
+            if not tracks.get(lang):
+                continue
+            track_info = self.get_track_info(tracks[lang])
+            track_url = track_info['url']
+            track_title = track_info['title']
+            track_title_no_space = track_title.replace(' ', '_')  # Remove space as telegram adds random thumbnails and album arts otherwise
 
-        # There is no url. Silently skip sending this track.
-        if not track_url:
+            # There is no url. Silently skip sending this track.
+            if not track_url:
+                continue
+
+            audio_caption = self.get_track_caption(track_info, add_song_info=False)
+
+            try:
+                # Send audio file
+                response = self.bmm_api.get_response_object(track_url)
+                raw_response_stream = response.raw
+                self.bot.send_audio(
+                    raw_response_stream,
+                    chat_id=settings.TELEGRAM_CHAT_ID,
+                    caption=audio_caption,
+                    title=track_title_no_space,
+                    parse_mode='HTML'
+                )
+            except (BmmApiError, RequestException, ReadTimeoutError):
+                traceback.print_exc()
+                return False
+
+            # Set song info
+            if not song_book:
+                song_book = track_info['song_book']
+                song_number = track_info['song_number']
+
+            song_lyric_file_path = os.path.join(settings.SCRIPT_DIR, 'song_lyrics', f"{song_book}-{lang}", f'{song_number}.png')
+            # If lyric file is not found for song, continue
+            if not os.path.isfile(song_lyric_file_path):
+                continue
+            song_lyrics_files.append(open(song_lyric_file_path, 'rb'))
+
+        # If there is no song information for track, return
+        if not song_lyrics_files:
             return True
-
-        audio_caption = self.get_track_caption(track_info)
-
-        try:
-            # Send audio file
-            response = self.bmm_api.get_response_object(track_url)
-            raw_response_stream = response.raw
-            self.bot.send_audio(
-                raw_response_stream,
-                chat_id=self.telegram_config['chat_id'],
-                caption=audio_caption,
-                title=track_title_no_space,
+        elif song_lyrics_files:
+            self.bot.send_message(
+                text=f'<b>Song:</b> {song_book} {song_number}',
+                chat_id=settings.TELEGRAM_CHAT_ID,
                 parse_mode='HTML'
             )
 
-            # Send song lyric image file
-            song_book = track_info['song_book']  
-            song_number = track_info['song_number']
-            # If there is no song information for track, return
-            if not song_book:
-                return True
-            song_lyric_file_path = os.path.join(SCRIPT_DIR, 'song_lyrics', song_book, f'{song_number}.png')
-            # If lyric file is not found for song, return
-            if not os.path.isfile(song_lyric_file_path):
-                return True
-            self.bot.send_photo(
-                open(song_lyric_file_path, 'rb'),
-                chat_id=self.telegram_config['chat_id']
+        # Send song lyrics
+        if len(song_lyrics_files) > 1:
+            self.bot.send_media_group(
+                song_lyrics_files,
+                chat_id=settings.TELEGRAM_CHAT_ID
             )
-        except (BmmApiError, RequestException, ReadTimeoutError):
-            traceback.print_exc()
-            return False
+        elif song_lyrics_files:
+            self.bot.send_photo(
+                song_lyrics_files[0],
+                chat_id=settings.TELEGRAM_CHAT_ID
+            )
+
         return True
