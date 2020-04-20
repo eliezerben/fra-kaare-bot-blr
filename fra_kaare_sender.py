@@ -1,6 +1,8 @@
 import os
 import json
 import traceback
+from datetime import datetime
+import time
 
 from requests.exceptions import RequestException
 from requests.packages.urllib3.exceptions import ReadTimeoutError
@@ -32,7 +34,8 @@ class FraKaareSender:
 
         self.db_man = DatabaseManager(os.path.join(settings.SCRIPT_DIR, 'database.json'))
 
-    def send_new_tracks(self):
+    def _send_new_tracks(self):
+        """Look at the last sent day and send all the pending tracks"""
         last_sent_day = self.db_man.get_last_sent_day()
         print(f'Last sent day: {last_sent_day}')
         new_tracks = self.get_new_tracks()
@@ -50,6 +53,31 @@ class FraKaareSender:
                     break
         else:
             print("No tracks to send")
+
+    def _is_todays_track_pending(self):
+        """If today is a weekday and todays track was not sent, return True"""
+        last_sent_day = self.db_man.get_last_sent_day()
+        now = datetime.now()
+        today_date = now.strftime('%Y-%m-%d')
+        today_day = now.strftime('%a')
+        if today_day not in ('Sat', 'Sun') and today_date!=last_sent_day:
+            return True
+        else:
+            return False
+
+    def send_new_tracks(self, try_times=1):
+        for i in range(try_times):
+            print(f'Trying to get todays track: try {i+1}')
+            try:
+                self._send_new_tracks()
+            except Exception as exc:
+                traceback.print_exc()
+            if self._is_todays_track_pending():
+                # Wait for 10 mins
+                time.sleep(600)
+            else:
+                return
+
 
     def get_new_tracks(self):
         """Return new tracks which have not yet been sent.
@@ -181,8 +209,8 @@ class FraKaareSender:
             track_title_no_space = track_title.replace(' ', '_')  # Remove space as telegram adds random thumbnails and album arts otherwise
 
             # There is no url. Silently skip sending this track.
-            if not track_url:
-                continue
+            if not track_url or not track_title:
+                return False
 
             audio_caption = self.get_track_caption(track_info, add_song_info=False)
 
