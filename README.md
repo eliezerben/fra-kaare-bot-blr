@@ -27,8 +27,8 @@ LANG = [
     'no',
 ]
 ```
-`bot_token` is the token of the bot which sends the podcast.\
-`chat_id` is the id of the user/channel to which podcasts should be sent.
+`TELEGRAM_BOT_TOKEN` is the token of the bot which sends the podcast.\
+`TELEGRAM_CHAT_ID` is the id of the user/channel to which podcasts should be sent.
 
 
 ## Usage
