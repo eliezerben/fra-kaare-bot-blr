@@ -10,18 +10,22 @@ pip install -r requirements.txt
 ```
 
 ## Initial Configuration
-Rename `config.json.example` to `config.json` and replace all dummy values with actual values.
+Rename `settings.example.py` to `settings.py` and replace all dummy values with actual values.
 ```
-{
-    "bmm": {
-        "username": "my-bmm-username",
-        "password": "my-bmm-password"
-    },
-    "telegram": {
-        "bot_token": "my-telegram-bot-token",
-        "chat_id": "telegram-chat-id"
-    }
-}
+# Bmm Settings
+BMM_USERNAME = "my-bmm-username"
+BMM_PASSWORD = "my-bmm-password"
+
+# Telegram Settings
+TELEGRAM_BOT_TOKEN = "my-telegram-bot-token"
+TELEGRAM_CHAT_ID = "telegram-chat-id-to-which-to-send"
+
+# Which all languages should Fra Kåre be sent in
+# Supported values: 'de', 'en', 'es', 'fi', 'fr', 'hu', 'it', 'nb', 'nl', 'pl', 'pt', 'ro', 'ru', 'sl', 'ta', 'tr'
+LANG = [
+    'en',
+    'no',
+]
 ```
 `bot_token` is the token of the bot which sends the podcast.\
 `chat_id` is the id of the user/channel to which podcasts should be sent.
