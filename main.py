@@ -26,6 +26,8 @@ def validate_settings():
 
 if __name__ == '__main__':
     settings.SCRIPT_DIR = os.path.dirname(os.path.realpath(__file__))
+    os.environ['BMM_USERNAME'] = settings.BMM_USERNAME
+    os.environ['BMM_PASSWORD'] = settings.BMM_PASSWORD
     sender = FraKaareSender()
     # Try for 3 hours if track not found
     sender.send_new_tracks(try_times=18)

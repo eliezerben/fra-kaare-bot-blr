@@ -8,7 +8,7 @@ from requests.exceptions import RequestException
 from requests.packages.urllib3.exceptions import ReadTimeoutError
 
 import settings
-from bmmapi import MinimalBmmApi, BmmApiError
+from bmmapi_puppeteer import MinimalBmmApi, BmmApiError
 from db_manager import DatabaseManager
 from telegram_bot import TelegramBot
 
@@ -74,6 +74,7 @@ class FraKaareSender:
                 traceback.print_exc()
             if self._is_todays_track_pending():
                 # Wait for 10 mins
+                print('Waiting for todays track to be available')
                 time.sleep(600)
             else:
                 return
