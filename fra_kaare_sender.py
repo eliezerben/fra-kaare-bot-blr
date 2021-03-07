@@ -41,6 +41,7 @@ class FraKaareSender:
         new_tracks = self.get_new_tracks()
         if not new_tracks:
             print("No tracks to send")
+            return
         days_to_send = sorted(new_tracks.keys())
         print(f"Days to send: {', '.join(days_to_send)}")
         for day in days_to_send:
