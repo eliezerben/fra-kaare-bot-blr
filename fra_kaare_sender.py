@@ -1,14 +1,14 @@
 import os
 import json
 import traceback
-from datetime import datetime
+from datetime import datetime, timedelta
 import time
 
 from requests.exceptions import RequestException
 from requests.packages.urllib3.exceptions import ReadTimeoutError
 
 import settings
-from bmmapi_puppeteer import MinimalBmmApi, BmmApiError
+from bmmapi import MinimalBmmApi, BmmApiError
 from db_manager import DatabaseManager
 from telegram_bot import TelegramBot
 
@@ -22,7 +22,7 @@ class FraKaareSender:
     This is used to find out which tracks are new.
     DatabaseManager is used to interact with the database.
 
-    TelegramBot uploads the audio to the channel.
+    TelegramBot uploads audio/images to given chat.
     """
 
     def __init__(self):
@@ -39,28 +39,34 @@ class FraKaareSender:
         last_sent_day = self.db_man.get_last_sent_day()
         print(f'Last sent day: {last_sent_day}')
         new_tracks = self.get_new_tracks()
-        if new_tracks:
-            days_to_send = sorted(new_tracks.keys())
-            print(f"Days to send: {', '.join(days_to_send)}")
-            for day in days_to_send:
-                print(f"Sending track of: {day}", end='', flush=True)
-                send_success = self.send_tracks(new_tracks[day])
-                if send_success:
-                    print(' - Success')
-                    self.db_man.set_last_sent_day(day)
-                else:
-                    print(' - Fail')
-                    break
-        else:
+        if not new_tracks:
             print("No tracks to send")
+        days_to_send = sorted(new_tracks.keys())
+        print(f"Days to send: {', '.join(days_to_send)}")
+        for day in days_to_send:
+            print(f"Sending track of: {day}", end='', flush=True)
+            send_success = self.send_tracks(new_tracks[day])
+            if send_success:
+                print(' - Success')
+                self.db_man.set_last_sent_day(day)
+            else:
+                print(' - Fail')
+                break
 
-    def _is_todays_track_pending(self):
-        """If today is a weekday and todays track was not sent, return True"""
-        last_sent_day = self.db_man.get_last_sent_day()
+    def _are_tracks_pending(self):
+        """If the latest track was not sent, return True"""
+        last_sent_day_str = self.db_man.get_last_sent_day()
         now = datetime.now()
-        today_date = now.strftime('%Y-%m-%d')
-        today_day = now.strftime('%a')
-        if today_day not in ('Sat', 'Sun') and today_date!=last_sent_day:
+        today_date_str = now.strftime('%Y-%m-%d')
+        today_day = int(now.strftime('%w'))  # 6 - Sat, 0 - Sun
+        last_weekday_str = today_date_str
+        # Get last weekday
+        if today_day in (6, 0):
+            days_since_last_friday = ( today_day + 1 ) % 7 + 1
+            last_weekday = now - timedelta(days_since_last_friday)
+            last_weekday_str = last_weekday.strftime('%Y-%m-%d')
+        # today_day not in ('Sat', 'Sun') and
+        if last_weekday_str != last_sent_day_str:
             return True
         else:
             return False
@@ -70,15 +76,18 @@ class FraKaareSender:
             print(f'Trying to get todays track: try {i+1}')
             try:
                 self._send_new_tracks()
+            except BmmApiError as exc:
+                traceback.print_exc()
+                print(f'Got api error. Re-authenticating...')
+                self.bmm_api.authenticate(settings.BMM_USERNAME, settings.BMM_PASSWORD)
             except Exception as exc:
                 traceback.print_exc()
-            if self._is_todays_track_pending():
-                # Wait for 10 mins
-                print('Waiting for todays track to be available')
-                time.sleep(600)
+            if self._are_tracks_pending():
+                # Wait for 5 mins
+                print('Pending tracks exist. Trying again...')
+                time.sleep(300)
             else:
                 return
-
 
     def get_new_tracks(self):
         """Return new tracks which have not yet been sent.
@@ -226,7 +235,7 @@ class FraKaareSender:
                     title=track_title_no_space,
                     parse_mode='HTML'
                 )
-            except (BmmApiError, RequestException, ReadTimeoutError):
+            except (RequestException, ReadTimeoutError):
                 traceback.print_exc()
                 return False
 

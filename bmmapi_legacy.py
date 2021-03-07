@@ -1,17 +1,11 @@
 """Minimal BMM Api
 
 From @Stolpervogel(Pascal Ilg) - Telegram
-Modified by Eliezer to get access_token using puppeteer
 """
-import os
 import shutil
-import subprocess
 
 import requests
 from requests.auth import HTTPBasicAuth
-
-
-SCRIPT_DIR = os.path.abspath(os.path.dirname(__file__))
 
 
 class BmmApiError(Exception):
@@ -60,12 +54,6 @@ class MinimalBmmApi:
         self.base_url = base_url
         self.lang = 'nb'
 
-    def _get_token(self):
-        print('Getting token')
-        res = subprocess.run(['node', f'{SCRIPT_DIR}/get_token.js'], capture_output=True, text=True)
-        token = res.stdout
-        return token.strip()
-
     def _get_response(self, method, path, use_auth, **kwargs):
         url = self.base_url + path
         # 'Accept-Language': 'de-DE,de;q=0.8,en-US;q=0.6,en;q=0.4,nb;q=0.2',
@@ -73,16 +61,19 @@ class MinimalBmmApi:
             'Accept': 'application/json',
             'Accept-Language': '{0};q=0.8,nb;q=0.2'.format(self.lang),
             'Accept-Encoding': 'gzip, deflate, sdch, br',
-            'Authorization': f'Bearer {self.token}'
         }
+
+        auth = None
+        if use_auth:
+            auth = HTTPBasicAuth(self.username, self.token)
 
         if method == 'GET':
             return requests.get(
-                url, params=kwargs, headers=headers)
+                url, auth=auth, params=kwargs, headers=headers)
 
         if method == 'POST':
             return requests.post(
-                url, data=kwargs, headers=headers)
+                url, auth=auth, data=kwargs, headers=headers)
 
         raise ValueError('Unknown request method {0}!'.format(method))
 
@@ -100,18 +91,40 @@ class MinimalBmmApi:
             fobj.decode_content = True
             shutil.copyfileobj(fobj, fout)
 
-
     def get_response_object(self, url, use_auth=True):
         headers = {
             'Accept-Encoding': 'gzip, deflate, sdch, br',
         }
-        payload = { 'auth': f'Bearer {self.token}' }
-        response = requests.get(url, headers=headers, stream=True, params=payload, timeout=15)
+        auth = None
+        if use_auth:
+            auth = HTTPBasicAuth(self.username, self.token)
+
+        response = requests.get(url, headers=headers, auth=auth, stream=True, timeout=15)
         assert_ok(response)
         return response
 
     def authenticate(self, username, password):
-        self.token = self._get_token()
+        response = self._get_response(
+            'POST', '/login/authentication', False,
+            username=username, password=password)
+        if not ok(response):
+            raise ValueError(
+                'Authentication failed ({0})!'.format(response.status_code))
+
+        data = response.json()
+        resp_username = data.get('username')
+        # if resp_username != username:
+        #     raise ValueError('Login returned different'
+        #                      ' username than used for login!')
+
+        token = data.get('token')
+        if not token:
+            raise ValueError('Login did not return valid token!')
+
+        self.username = resp_username
+        # self.first_name = data.get('first_name')
+        # self.last_name = data.get('last_name')
+        self.token = token
         self.authenticated = True
 
     def setLanguage(self, lang):
