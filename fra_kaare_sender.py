@@ -1,4 +1,5 @@
 import os
+import sys
 import json
 import traceback
 from datetime import datetime, timedelta
@@ -37,21 +38,21 @@ class FraKaareSender:
     def _send_new_tracks(self):
         """Look at the last sent day and send all the pending tracks"""
         last_sent_day = self.db_man.get_last_sent_day()
-        print(f'Last sent day: {last_sent_day}')
+        print(f'Last sent day: {last_sent_day}', flush=True)
         new_tracks = self.get_new_tracks()
         if not new_tracks:
-            print("No tracks to send")
+            print("No tracks to send", flush=True)
             return
         days_to_send = sorted(new_tracks.keys())
-        print(f"Days to send: {', '.join(days_to_send)}")
+        print(f"Days to send: {', '.join(days_to_send)}", flush=True)
         for day in days_to_send:
             print(f"Sending track of: {day}", end='', flush=True)
             send_success = self.send_tracks(new_tracks[day])
             if send_success:
-                print(' - Success')
+                print(' - Success', flush=True)
                 self.db_man.set_last_sent_day(day)
             else:
-                print(' - Fail')
+                print(' - Fail', flush=True)
                 break
 
     def _are_tracks_pending(self):
@@ -74,18 +75,20 @@ class FraKaareSender:
 
     def send_new_tracks(self, try_times=1):
         for i in range(try_times):
-            print(f'Trying to get todays track: try {i+1}')
+            print(f'Trying to get todays track: try {i+1}', flush=True)
             try:
                 self._send_new_tracks()
             except BmmApiError as exc:
                 traceback.print_exc()
-                print(f'Got api error. Re-authenticating...')
+                sys.stdout.flush()
+                print(f'Got api error. Re-authenticating...', flush=True)
                 self.bmm_api.authenticate(settings.BMM_USERNAME, settings.BMM_PASSWORD)
             except Exception as exc:
                 traceback.print_exc()
+                sys.stdout.flush()
             if self._are_tracks_pending():
                 # Wait for 5 mins
-                print('Pending tracks exist. Trying again...')
+                print('Pending tracks exist. Trying again...', flush=True)
                 time.sleep(300)
             else:
                 return
@@ -238,6 +241,7 @@ class FraKaareSender:
                 )
             except (RequestException, ReadTimeoutError):
                 traceback.print_exc()
+                sys.stdout.flush()
                 return False
 
             # Set song info
