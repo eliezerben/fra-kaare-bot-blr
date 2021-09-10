@@ -7,6 +7,7 @@ Modified by Eliezer to change authentication mechanism.
     - Get access token by logging in using puppeteer.
 """
 import os
+import re
 import sys
 import shutil
 import subprocess
@@ -121,7 +122,13 @@ class MinimalBmmApi:
         os.environ['BMM_USERNAME'] = username
         os.environ['BMM_PASSWORD'] = password
         self.token = self._get_token()
-        self.authenticated = True
+        if not self.token or re.search(r'\s', self.token):
+            self.authenticated = False
+        else:
+            self.authenticated = True
+
+    def is_authenticated(self):
+        return self.authenticated
 
     def setLanguage(self, lang):
         if lang not in self.lang_list:

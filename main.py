@@ -26,5 +26,5 @@ def validate_settings():
 
 if __name__ == '__main__':
     settings.SCRIPT_DIR = os.path.dirname(os.path.realpath(__file__))
-    sender = FraKaareSender()
-    sender.send_new_tracks(try_times=18)
+    sender = FraKaareSender(try_times=6)
+    sender.send_new_tracks()

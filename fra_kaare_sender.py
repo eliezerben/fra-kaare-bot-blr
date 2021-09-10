@@ -26,11 +26,20 @@ class FraKaareSender:
     TelegramBot uploads audio/images to given chat.
     """
 
-    def __init__(self):
+    def __init__(self, try_times=3):
         self.fra_kaare_podcast_id = 1
+        self.try_times = try_times
 
         self.bmm_api = MinimalBmmApi('https://bmm-api.brunstad.org')
-        self.bmm_api.authenticate(settings.BMM_USERNAME, settings.BMM_PASSWORD)
+
+        print('Authenticating user')
+        for try_ind in range(self.try_times):
+            self.bmm_api.authenticate(settings.BMM_USERNAME, settings.BMM_PASSWORD)
+            if self.bmm_api.is_authenticated():
+                break
+            time.sleep(180)
+            print(f"Authentication failed. try {try_ind+1}...", flush=True)
+
         self.bot = TelegramBot(settings.TELEGRAM_BOT_TOKEN)
 
         self.db_man = DatabaseManager(os.path.join(settings.SCRIPT_DIR, 'database.json'))
@@ -73,25 +82,25 @@ class FraKaareSender:
         else:
             return False
 
-    def send_new_tracks(self, try_times=1):
-        for i in range(try_times):
+    def send_new_tracks(self):
+        for i in range(self.try_times):
             print(f'Trying to get todays track: try {i+1}', flush=True)
             try:
                 self._send_new_tracks()
-            except BmmApiError as exc:
+            except BmmApiError:
+                print(f'Got api error.', flush=True)
                 traceback.print_exc()
                 sys.stdout.flush()
-                print(f'Got api error. Re-authenticating...', flush=True)
-                self.bmm_api.authenticate(settings.BMM_USERNAME, settings.BMM_PASSWORD)
-            except Exception as exc:
+            except Exception:
+                print(f'Got unknown error.', flush=True)
                 traceback.print_exc()
                 sys.stdout.flush()
             if self._are_tracks_pending():
-                # Wait for 5 mins
-                print('Pending tracks exist. Trying again...', flush=True)
-                time.sleep(300)
+                print('Pending tracks exist.', flush=True)
             else:
                 return
+            print(f'Sleeping for 180 seconds...')
+            time.sleep(180)
 
     def get_new_tracks(self):
         """Return new tracks which have not yet been sent.
