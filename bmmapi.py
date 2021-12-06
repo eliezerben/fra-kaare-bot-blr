@@ -80,7 +80,7 @@ class MinimalBmmApi:
         # 'Accept-Language': 'de-DE,de;q=0.8,en-US;q=0.6,en;q=0.4,nb;q=0.2',
         headers = {
             'Accept': 'application/json',
-            'Accept-Language': '{0};q=0.8,nb;q=0.2'.format(self.lang),
+            'Accept-Language': '{0}'.format(self.lang),
             'Accept-Encoding': 'gzip, deflate, sdch, br',
             'Authorization': f'Bearer {self.token}'
         }

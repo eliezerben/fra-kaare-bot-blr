@@ -141,6 +141,7 @@ pip-selfcheck.json
 
 tmp/
 database.json
+node_modules
 
 # Contains sensitive information
 settings.py
