@@ -1,4 +1,4 @@
-# fra-kaare-bot-blr
+# Fra Kåre Telegram Bot
 Python program to send Fra Kåre podcast(English) to telegram user/channel.
 
 
