@@ -27,14 +27,14 @@ class FraKaareSender:
     """
 
     def __init__(self, try_times=3):
-        self.fra_kaare_podcast_id = 1
         self.try_times = try_times
 
         self.bmm_api = MinimalBmmApi('https://bmm-api.brunstad.org')
 
         print('Authenticating user')
         for try_ind in range(self.try_times):
-            self.bmm_api.authenticate(settings.BMM_USERNAME, settings.BMM_PASSWORD)
+            self.bmm_api.authenticate(
+                settings.BMM_USERNAME, settings.BMM_PASSWORD)
             if self.bmm_api.is_authenticated():
                 break
             time.sleep(180)
@@ -42,7 +42,8 @@ class FraKaareSender:
 
         self.bot = TelegramBot(settings.TELEGRAM_BOT_TOKEN)
 
-        self.db_man = DatabaseManager(os.path.join(settings.SCRIPT_DIR, 'database.json'))
+        self.db_man = DatabaseManager(os.path.join(
+            settings.SCRIPT_DIR, 'database.json'))
 
     def _send_new_tracks(self):
         """Look at the last sent day and send all the pending tracks"""
@@ -73,7 +74,7 @@ class FraKaareSender:
         last_weekday_str = today_date_str
         # Get last weekday
         if today_day in (6, 0):
-            days_since_last_friday = ( today_day + 1 ) % 7 + 1
+            days_since_last_friday = (today_day + 1) % 7 + 1
             last_weekday = now - timedelta(days_since_last_friday)
             last_weekday_str = last_weekday.strftime('%Y-%m-%d')
         # today_day not in ('Sat', 'Sun') and
@@ -116,11 +117,14 @@ class FraKaareSender:
         for lang in settings.LANG:
             new_tracks_lang = []
             self.bmm_api.setLanguage(lang)
-            fra_kaare_tracks = self.bmm_api.podcastTracks(self.fra_kaare_podcast_id)
+            fra_kaare_tracks = self.bmm_api.podcastTracks(settings.PODCAST_ID)
+            print(fra_kaare_tracks)
             last_sent_day = self.db_man.get_last_sent_day()
 
-            if not last_sent_day:
+            if last_sent_day is None:
                 new_tracks_lang.append(fra_kaare_tracks[0])
+            elif last_sent_day == '':
+                new_tracks_lang = fra_kaare_tracks
             else:
                 for index, track in enumerate(fra_kaare_tracks):
                     if track['published_at'].startswith(last_sent_day):
@@ -229,13 +233,15 @@ class FraKaareSender:
             track_info = self.get_track_info(tracks[lang])
             track_url = track_info['url']
             track_title = track_info['title']
-            track_title_no_space = track_title.replace(' ', '_')  # Remove space as telegram adds random thumbnails and album arts otherwise
+            # Remove space as telegram adds random thumbnails and album arts otherwise
+            track_title_no_space = track_title.replace(' ', '_')
 
             # There is no url. Silently skip sending this track.
             if not track_url or not track_title:
                 return False
 
-            audio_caption = self.get_track_caption(track_info, add_song_info=False)
+            audio_caption = self.get_track_caption(
+                track_info, add_song_info=False)
 
             try:
                 # Send audio file
@@ -258,7 +264,8 @@ class FraKaareSender:
                 song_book = track_info['song_book']
                 song_number = track_info['song_number']
 
-            song_lyric_file_path = os.path.join(settings.SCRIPT_DIR, 'song_lyrics', f"{song_book}-{lang}", f'{song_number}.png')
+            song_lyric_file_path = os.path.join(
+                settings.SCRIPT_DIR, 'song_lyrics', f"{song_book}-{lang}", f'{song_number}.png')
             # If lyric file is not found for song, continue
             if not os.path.isfile(song_lyric_file_path):
                 continue
