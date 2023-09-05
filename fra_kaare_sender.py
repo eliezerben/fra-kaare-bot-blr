@@ -118,7 +118,6 @@ class FraKaareSender:
             new_tracks_lang = []
             self.bmm_api.setLanguage(lang)
             fra_kaare_tracks = self.bmm_api.podcastTracks(settings.PODCAST_ID)
-            print(fra_kaare_tracks)
             last_sent_day = self.db_man.get_last_sent_day()
 
             if last_sent_day is None:
