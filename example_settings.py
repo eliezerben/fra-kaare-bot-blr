@@ -2,6 +2,7 @@
 # Bmm Settings
 BMM_USERNAME = "my-bmm-username"
 BMM_PASSWORD = "my-bmm-password"
+PODCAST_ID = 54
 
 # Telegram Settings
 TELEGRAM_BOT_TOKEN = "my-telegram-bot-token"
